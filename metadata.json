@@ -1,0 +1,6 @@
+{
+  "name": "Women Safety System",
+  "description": "Java 21 Swing desktop application with FlatLaf dark UI and SQLite persistence for personal safety, SOS alerts, live location sharing, and trusted contacts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

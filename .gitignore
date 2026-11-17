@@ -1,0 +1,15 @@
+node_modules/
+.next/
+.next-dev/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+target/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.idea/
+*.iml
