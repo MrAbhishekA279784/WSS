@@ -109,3 +109,18 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Pr
     headers,
   });
 }
+
+export async function safeJson(res: Response): Promise<Record<string, any>> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      error:
+        text.startsWith('<!DOCTYPE') || text.startsWith('<html')
+          ? 'Server error (HTML response). Please check database storage or try again.'
+          : text || 'Invalid server response.',
+    };
+  }
+}
+

@@ -19,6 +19,7 @@ import {
   buildClientGoogleMapsUrl,
   buildSmsHref,
   formatClientCoordinates,
+  safeJson,
 } from '@/lib/client-utils';
 import type { LocationMode, SOSRecord, WorkspaceBundle } from '@/lib/types';
 
@@ -95,7 +96,7 @@ export default function SOSActivationView({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ latitude: lat, longitude: lng, address, locationType }),
         });
-        const data = await res.json();
+        const data = await safeJson(res);
         if (!res.ok || !data.sos) {
           setStep2('warn');
           setStep2Text(data.error ?? 'Could not dispatch SOS.');
@@ -142,7 +143,7 @@ export default function SOSActivationView({
     setCancelling(true);
     try {
       const res = await apiFetch(`/api/sos/${createdSOS.id}`, { method: 'PATCH' });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (res.ok && data.sos) {
         setCreatedSOS(data.sos);
         await onSOSUpdated();

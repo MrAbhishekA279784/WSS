@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import TiltCard from '@/components/TiltCard';
 import { triggerHaptic } from '@/lib/haptics';
-import { apiFetch } from '@/lib/client-utils';
+import { apiFetch, safeJson } from '@/lib/client-utils';
 import type { EmergencyContact, WorkspaceBundle } from '@/lib/types';
 
 interface TrustedContactsViewProps {
@@ -81,7 +81,7 @@ export default function TrustedContactsView({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, phone, relationship }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         triggerHaptic('error');
         setFormError(data.error ?? 'Failed to save contact.');

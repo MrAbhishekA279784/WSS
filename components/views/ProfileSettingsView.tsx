@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import TiltCard from '@/components/TiltCard';
 import { triggerHaptic } from '@/lib/haptics';
-import { apiFetch, formatDisplayDateTime } from '@/lib/client-utils';
+import { apiFetch, formatDisplayDateTime, safeJson } from '@/lib/client-utils';
 import type { WorkspaceBundle } from '@/lib/types';
 
 interface ProfileSettingsViewProps {
@@ -67,7 +67,7 @@ export default function ProfileSettingsView({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fullName, phone }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         triggerHaptic('error');
         setProfileErr(data.error ?? 'Could not update profile.');
@@ -95,7 +95,7 @@ export default function ProfileSettingsView({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         triggerHaptic('error');
         setPwErr(data.error ?? 'Could not change password.');
@@ -138,7 +138,7 @@ export default function ProfileSettingsView({
           simulatedAddress: simAddress,
         }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         triggerHaptic('error');
         setSettingsErr(data.error ?? 'Could not update settings.');

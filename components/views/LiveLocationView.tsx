@@ -17,6 +17,7 @@ import {
   buildClientGoogleMapsUrl,
   formatClientCoordinates,
   formatDisplayDateTime,
+  safeJson,
 } from '@/lib/client-utils';
 import type { LocationMode, WorkspaceBundle } from '@/lib/types';
 
@@ -58,7 +59,7 @@ export default function LiveLocationView({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ latitude, longitude, address, locationType }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         setErrorMessage(data.error ?? 'Could not save location.');
         return false;

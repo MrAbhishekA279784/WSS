@@ -30,6 +30,7 @@ import {
   clearSessionToken,
   formatDisplayDateTime,
   getStoredSessionToken,
+  safeJson,
 } from '@/lib/client-utils';
 import type { AppView, WorkspaceBundle } from '@/lib/types';
 
@@ -76,7 +77,7 @@ export default function AppShell({ initialBundle, skipSplash }: AppShellProps) {
       return;
     }
     if (res.ok) {
-      const data: WorkspaceBundle = await res.json();
+      const data: WorkspaceBundle = (await safeJson(res)) as WorkspaceBundle;
       setBundle(data);
     }
   }, []);
@@ -95,7 +96,7 @@ export default function AppShell({ initialBundle, skipSplash }: AppShellProps) {
           return;
         }
         if (res.ok) {
-          const data: WorkspaceBundle = await res.json();
+          const data: WorkspaceBundle = (await safeJson(res)) as WorkspaceBundle;
           if (active) {
             setBundle(data);
           }

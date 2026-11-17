@@ -48,14 +48,16 @@ function getCandidateDbPaths(): string[] {
   );
 
   const candidates: string[] = [];
-  if (!isServerless && isPathWritable(cwdDb)) {
-    candidates.push(cwdDb);
+  if (isServerless) {
+    candidates.push(tmpDb);
+    candidates.push(':memory:');
+  } else {
+    if (isPathWritable(cwdDb)) {
+      candidates.push(cwdDb);
+    }
+    candidates.push(tmpDb);
+    candidates.push(':memory:');
   }
-  candidates.push(tmpDb);
-  if (isServerless && isPathWritable(cwdDb)) {
-    candidates.push(cwdDb);
-  }
-  candidates.push(':memory:');
   return candidates;
 }
 

@@ -19,6 +19,7 @@ import {
   buildClientGoogleMapsUrl,
   formatClientCoordinates,
   formatDisplayDateTime,
+  safeJson,
 } from '@/lib/client-utils';
 import type { SOSRecord, WorkspaceBundle } from '@/lib/types';
 
@@ -54,7 +55,7 @@ export default function SOSHistoryView({
     setActionBusy(true);
     try {
       const res = await apiFetch(`/api/sos/${sosId}`, { method: 'PATCH' });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (res.ok && data.sos) {
         setSelected(data.sos);
         await onRefresh();

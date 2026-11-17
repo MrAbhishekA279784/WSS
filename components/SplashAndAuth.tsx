@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import BrandMark from './BrandMark';
 import { signInWithGoogle } from '@/lib/firebase';
-import { apiFetch, storeSessionToken } from '@/lib/client-utils';
+import { apiFetch, safeJson, storeSessionToken } from '@/lib/client-utils';
 import type { WorkspaceBundle } from '@/lib/types';
 
 interface SplashAndAuthProps {
@@ -83,7 +83,7 @@ export default function SplashAndAuth({
           phone: fbUser.phoneNumber || '',
         }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         setLoginError(data.error ?? 'Google sign-in failed.');
         return;
@@ -108,7 +108,7 @@ export default function SplashAndAuth({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: loginEmail, password: loginPassword }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         setLoginError(data.error ?? 'Invalid email or password.');
         return;
@@ -138,7 +138,7 @@ export default function SplashAndAuth({
           confirmPassword: regConfirm,
         }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         setRegError(data.error ?? 'Registration failed.');
         return;
@@ -168,7 +168,7 @@ export default function SplashAndAuth({
           confirmPassword: fpConfirmPw,
         }),
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) {
         setFpError(data.error ?? 'Could not reset password.');
         return;
