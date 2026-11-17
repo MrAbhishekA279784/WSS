@@ -19,8 +19,8 @@ export async function POST(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   try {
-    const body = await req.json().catch(() => ({}));
     const res = await triggerSOS(user.id, {
       latitude: typeof body?.latitude === 'number' ? body.latitude : undefined,
       longitude: typeof body?.longitude === 'number' ? body.longitude : undefined,
@@ -31,10 +31,17 @@ export async function POST(req: NextRequest) {
           : undefined,
     });
     if (!res.ok || !res.data) {
-      return NextResponse.json({ error: res.error ?? 'Failed to trigger SOS.' }, { status: res.statusCode ?? 400 });
+      return NextResponse.json(
+        { error: res.error ?? 'Failed to trigger SOS.' },
+        { status: res.statusCode ?? 400 }
+      );
     }
     return NextResponse.json({ sos: res.data }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+  } catch (err) {
+    console.error('[api/sos] Unexpected error:', err);
+    return NextResponse.json(
+      { error: 'Unable to trigger SOS due to a server error.' },
+      { status: 500 }
+    );
   }
 }

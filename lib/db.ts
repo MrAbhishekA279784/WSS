@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 import { hashPassword, normalizeEmail } from './security';
@@ -15,8 +16,52 @@ const globalForDb = globalThis as unknown as {
   __wssSqlitePath?: string;
 };
 
+function isPathWritable(targetFile: string): boolean {
+  if (targetFile === ':memory:') {
+    return true;
+  }
+  try {
+    const dir = path.dirname(targetFile);
+    fs.accessSync(dir, fs.constants.W_OK);
+    if (fs.existsSync(targetFile)) {
+      fs.accessSync(targetFile, fs.constants.W_OK);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function getCandidateDbPaths(): string[] {
+  const explicit = process.env.WSS_DB_PATH?.trim();
+  if (explicit) {
+    return [explicit];
+  }
+
+  const cwdDb = path.join(process.cwd(), 'women_safety.db');
+  const tmpDb = path.join(os.tmpdir(), 'women_safety.db');
+  const isServerless = Boolean(
+    process.env.VERCEL ||
+      process.env.VERCEL_ENV ||
+      process.env.AWS_LAMBDA_FUNCTION_NAME ||
+      process.env.LAMBDA_TASK_ROOT
+  );
+
+  const candidates: string[] = [];
+  if (!isServerless && isPathWritable(cwdDb)) {
+    candidates.push(cwdDb);
+  }
+  candidates.push(tmpDb);
+  if (isServerless && isPathWritable(cwdDb)) {
+    candidates.push(cwdDb);
+  }
+  candidates.push(':memory:');
+  return candidates;
+}
+
 function resolveDbPath(): string {
-  return process.env.WSS_DB_PATH?.trim() || path.join(process.cwd(), 'women_safety.db');
+  const candidates = getCandidateDbPaths();
+  return candidates[0];
 }
 
 function seedInitialUser(db: DatabaseSync): void {
@@ -65,10 +110,15 @@ function seedInitialUser(db: DatabaseSync): void {
 }
 
 function initializeSchema(db: DatabaseSync): void {
+  try {
+    db.exec('PRAGMA journal_mode = WAL;');
+  } catch {
+    // Fallback gracefully to default journal mode on filesystems without WAL support
+  }
+
   db.exec(`
     PRAGMA foreign_keys = ON;
     PRAGMA busy_timeout = 5000;
-    PRAGMA journal_mode = WAL;
 
     CREATE TABLE IF NOT EXISTS app_meta (
       key TEXT PRIMARY KEY,
@@ -145,10 +195,37 @@ function initializeSchema(db: DatabaseSync): void {
   seedInitialUser(db);
 }
 
+function openAndInitDb(dbPath: string): DatabaseSync {
+  if (dbPath !== ':memory:') {
+    const dir = path.dirname(dbPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  }
+  const db = new DatabaseSync(dbPath);
+  try {
+    initializeSchema(db);
+    return db;
+  } catch (err) {
+    try {
+      db.close();
+    } catch {
+      // ignore close error
+    }
+    throw err;
+  }
+}
+
 export function getDb(): DatabaseSync {
-  const dbPath = resolveDbPath();
-  const fileExists = dbPath === ':memory:' || fs.existsSync(dbPath);
-  if (globalForDb.__wssSqliteDb && globalForDb.__wssSqlitePath === dbPath && fileExists) {
+  const preferredPath = resolveDbPath();
+  const cachedPath = globalForDb.__wssSqlitePath;
+  const cachedExists = cachedPath === ':memory:' || (cachedPath ? fs.existsSync(cachedPath) : false);
+
+  if (
+    globalForDb.__wssSqliteDb &&
+    cachedExists &&
+    (!process.env.WSS_DB_PATH?.trim() || cachedPath === preferredPath)
+  ) {
     return globalForDb.__wssSqliteDb;
   }
 
@@ -158,13 +235,26 @@ export function getDb(): DatabaseSync {
     } catch {
       // ignore close error on path switch
     }
+    globalForDb.__wssSqliteDb = undefined;
+    globalForDb.__wssSqlitePath = undefined;
   }
 
-  const db = new DatabaseSync(dbPath);
-  initializeSchema(db);
-  globalForDb.__wssSqliteDb = db;
-  globalForDb.__wssSqlitePath = dbPath;
-  return db;
+  const candidates = getCandidateDbPaths();
+  let lastError: unknown;
+  for (const candidate of candidates) {
+    try {
+      const db = openAndInitDb(candidate);
+      globalForDb.__wssSqliteDb = db;
+      globalForDb.__wssSqlitePath = candidate;
+      return db;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Unable to initialize SQLite database.');
 }
 
 export function resetDbForTests(): void {
@@ -178,3 +268,4 @@ export function resetDbForTests(): void {
   globalForDb.__wssSqliteDb = undefined;
   globalForDb.__wssSqlitePath = undefined;
 }
+

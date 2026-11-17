@@ -1,3 +1,4 @@
+import { parseJsonBody } from '@/lib/api-helpers';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { createContact, listContacts } from '@/lib/services';
 import { NextRequest, NextResponse } from 'next/server';
@@ -17,18 +18,30 @@ export async function POST(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const parsed = await parseJsonBody(req);
+  if (!parsed.ok) {
+    return parsed.response;
+  }
+  const { body } = parsed;
+
   try {
-    const body = await req.json();
     const res = createContact(user.id, {
-      name: String(body?.name ?? ''),
-      phone: String(body?.phone ?? ''),
-      relationship: typeof body?.relationship === 'string' ? body.relationship : '',
+      name: String(body.name ?? ''),
+      phone: String(body.phone ?? ''),
+      relationship: typeof body.relationship === 'string' ? body.relationship : '',
     });
     if (!res.ok || !res.data) {
-      return NextResponse.json({ error: res.error ?? 'Could not add contact.' }, { status: res.statusCode ?? 400 });
+      return NextResponse.json(
+        { error: res.error ?? 'Could not add contact.' },
+        { status: res.statusCode ?? 400 }
+      );
     }
     return NextResponse.json({ contact: res.data }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+  } catch (err) {
+    console.error('[api/contacts] Unexpected error:', err);
+    return NextResponse.json(
+      { error: 'Unable to save contact due to a server error.' },
+      { status: 500 }
+    );
   }
 }

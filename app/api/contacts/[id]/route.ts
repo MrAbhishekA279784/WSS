@@ -1,3 +1,4 @@
+import { parseJsonBody } from '@/lib/api-helpers';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { deleteContact, updateContact } from '@/lib/services';
 import { NextRequest, NextResponse } from 'next/server';
@@ -15,19 +16,31 @@ export async function PATCH(
   if (!Number.isInteger(contactId) || contactId <= 0) {
     return NextResponse.json({ error: 'Invalid contact ID.' }, { status: 400 });
   }
+  const parsed = await parseJsonBody(req);
+  if (!parsed.ok) {
+    return parsed.response;
+  }
+  const { body } = parsed;
+
   try {
-    const body = await req.json();
     const res = updateContact(user.id, contactId, {
-      name: String(body?.name ?? ''),
-      phone: String(body?.phone ?? ''),
-      relationship: typeof body?.relationship === 'string' ? body.relationship : '',
+      name: String(body.name ?? ''),
+      phone: String(body.phone ?? ''),
+      relationship: typeof body.relationship === 'string' ? body.relationship : '',
     });
     if (!res.ok || !res.data) {
-      return NextResponse.json({ error: res.error ?? 'Could not update contact.' }, { status: res.statusCode ?? 400 });
+      return NextResponse.json(
+        { error: res.error ?? 'Could not update contact.' },
+        { status: res.statusCode ?? 400 }
+      );
     }
     return NextResponse.json({ contact: res.data });
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+  } catch (err) {
+    console.error('[api/contacts/[id]] Unexpected error:', err);
+    return NextResponse.json(
+      { error: 'Unable to update contact due to a server error.' },
+      { status: 500 }
+    );
   }
 }
 
