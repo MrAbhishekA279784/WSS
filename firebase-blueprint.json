@@ -1,0 +1,71 @@
+{
+  "entities": {
+    "User": {
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 255 },
+        "fullName": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["uid", "email", "fullName"]
+    },
+    "EmergencyContact": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 30 },
+        "relationship": { "type": "string", "maxLength": 50 }
+      },
+      "required": ["id", "userId", "name", "phone"]
+    },
+    "SOSRecord": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "maxLength": 32 },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "locationLabel": { "type": "string", "maxLength": 255 },
+        "locationType": { "type": "string", "maxLength": 32 },
+        "deliveryStatus": { "type": "string", "maxLength": 32 },
+        "deliveryNote": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "cancelledAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "userId", "status", "latitude", "longitude"]
+    }
+  },
+  "firestore": {
+    "paths": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entity": "User",
+          "read": "request.auth != null && request.auth.uid == userId",
+          "write": "request.auth != null && request.auth.uid == userId"
+        }
+      },
+      {
+        "path": "/users/{userId}/contacts/{contactId}",
+        "definition": {
+          "entity": "EmergencyContact",
+          "read": "request.auth != null && request.auth.uid == userId",
+          "write": "request.auth != null && request.auth.uid == userId"
+        }
+      },
+      {
+        "path": "/users/{userId}/sosHistory/{sosId}",
+        "definition": {
+          "entity": "SOSRecord",
+          "read": "request.auth != null && request.auth.uid == userId",
+          "write": "request.auth != null && request.auth.uid == userId"
+        }
+      }
+    ]
+  }
+}

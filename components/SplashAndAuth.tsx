@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import BrandMark from './BrandMark';
+import { signInWithGoogle } from '@/lib/firebase';
 import { apiFetch, storeSessionToken } from '@/lib/client-utils';
 import type { WorkspaceBundle } from '@/lib/types';
 
@@ -39,6 +40,7 @@ export default function SplashAndAuth({
   const [showLoginPw, setShowLoginPw] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [loginBusy, setLoginBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   // Register state
   const [regName, setRegName] = useState('');
@@ -66,6 +68,35 @@ export default function SplashAndAuth({
     }, 1100);
     return () => clearTimeout(timer);
   }, [showSplash]);
+
+  const handleGoogleSignIn = async () => {
+    setLoginError('');
+    setGoogleBusy(true);
+    try {
+      const fbUser = await signInWithGoogle();
+      const res = await apiFetch('/api/auth/firebase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: fbUser.email,
+          fullName: fbUser.displayName || fbUser.email?.split('@')[0] || 'Google User',
+          phone: fbUser.phoneNumber || '',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLoginError(data.error ?? 'Google sign-in failed.');
+        return;
+      }
+      storeSessionToken(data.token);
+      await onAuthenticated(data.bundle ?? null);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Google sign-in cancelled or failed.';
+      setLoginError(msg);
+    } finally {
+      setGoogleBusy(false);
+    }
+  };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -368,14 +399,47 @@ export default function SplashAndAuth({
 
                 <button
                   type="submit"
-                  disabled={loginBusy}
+                  disabled={loginBusy || googleBusy}
                   className="h-12 w-full rounded-full bg-[#F5B6A9] px-6 text-sm font-semibold text-[#111111] transition-colors hover:bg-[#ECA99C] disabled:opacity-60 whitespace-nowrap shrink-0"
                 >
                   {loginBusy ? 'Signing in...' : 'Login'}
                 </button>
               </form>
 
-              <div className="my-6 flex items-center gap-3">
+              <div className="my-5 flex items-center gap-3">
+                <div className="h-px flex-1 bg-[#393333]" />
+                <span className="text-xs text-[#A5A0A0]">or</span>
+                <div className="h-px flex-1 bg-[#393333]" />
+              </div>
+
+              <button
+                type="button"
+                disabled={loginBusy || googleBusy}
+                onClick={handleGoogleSignIn}
+                className="flex h-12 w-full items-center justify-center gap-2.5 rounded-full border border-[#393333] bg-[#111111] px-6 text-sm font-medium text-[#F5F2F0] transition-colors hover:border-[#ECA99C]/60 hover:bg-[#1C1C1C] disabled:opacity-60 whitespace-nowrap shrink-0 shadow-sm"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24">
+                  <path
+                    fill="#EA4335"
+                    d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.9C6.2 7.3 8.9 5 12 5z"
+                  />
+                  <path
+                    fill="#4285F4"
+                    d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.3 14.7c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.6 7.2C.6 9.2 0 11.5 0 14s.6 4.8 1.6 6.8l3.7-2.9c-.3-.9-.5-1.9-.5-3.2z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.3-6.7-5.3L1.6 16C3.5 19.8 7.4 23 12 23z"
+                  />
+                </svg>
+                {googleBusy ? 'Connecting to Google...' : 'Continue with Google'}
+              </button>
+
+              <div className="my-5 flex items-center gap-3">
                 <div className="h-px flex-1 bg-[#393333]" />
                 <span className="text-xs text-[#A5A0A0]">or</span>
                 <div className="h-px flex-1 bg-[#393333]" />
